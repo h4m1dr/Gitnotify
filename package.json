@@ -1,0 +1,13 @@
+{
+  "name": "gitnotify",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "wrangler-sync": "for /f %i in ('wrangler -v') do npm install -D wrangler@%i"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4"
+  }
+}
