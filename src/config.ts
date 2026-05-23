@@ -1,7 +1,7 @@
 export const CONFIG = {
   ENABLE_BOT: true,
 
-  ADMIN_IDS: ["123456789"],
+  ADMIN_IDS: ["8300973959"],
 
   LIMITS: {
     user: 3,

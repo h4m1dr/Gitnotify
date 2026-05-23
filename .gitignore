@@ -1,22 +1,11 @@
-# Dependencies
 node_modules/
-
-# Wrangler local cache
 .wrangler/
+.env
+.env.env
 .dev.vars
-
-# Build output
 dist/
 build/
-
-# Env files (secrets)
-.env
-.dev.vars
-
-# Logs
 *.log
-
-# OS junk
 .DS_Store
 Thumbs.db
-.proxycmd
+proxycmd.bat

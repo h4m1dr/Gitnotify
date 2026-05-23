@@ -5,6 +5,3 @@ compatibility_date = "2026-05-01"
 [[kv_namespaces]]
 binding = "GITNOTIFY_KV"
 id = "4889c57e524b4e9897d8e36b212306b9"
-
-[vars]
-TELEGRAM_WEBHOOK_SECRET = "dcf15d46-5d05-4d01-a0c1-bc96966a6469"

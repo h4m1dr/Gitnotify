@@ -1,5 +1,0 @@
-{
-  "scripts": {
-    "deploy": "wrangler deploy && node scripts/setWebhook.js"
-  }
-}

@@ -1,7 +1,4 @@
-import { sendTelegramMessage, sendTelegramButtons } from "./telegram";
-import { initUser, getUser, saveUser, listUsers } from "./storage";
-import { handleCommitEvent } from "./handlers/commits";
-import { handleReleaseEvent } from "./handlers/release";
+import { sendTelegramMessage } from "./telegram";
 
 export interface Env {
   TELEGRAM_BOT_TOKEN: string;
@@ -9,13 +6,8 @@ export interface Env {
   GITNOTIFY_KV: KVNamespace;
 }
 
-/**
- * CONFIG FLAGS (feature toggles)
- */
 const CONFIG = {
   ENABLE_BOT: true,
-  ENABLE_QUOTA: true,
-  ENABLE_ADMIN_PANEL: true,
 };
 
 export default {
@@ -24,139 +16,78 @@ export default {
       return new Response("Bot disabled");
     }
 
-    // 🔐 webhook security
-    const secret = request.headers.get("X-Telegram-Bot-Api-Secret-Token");
-    if (secret !== env.TELEGRAM_WEBHOOK_SECRET) {
-      return new Response("Unauthorized", { status: 401 });
+    const url = new URL(request.url);
+
+    // 🟢 1. GitHub Webhook Route
+    if (url.pathname === "/github") {
+      return handleGitHub(request, env);
     }
 
-    const update = await request.json().catch(() => null);
-    if (!update) return new Response("No update");
-
-    const message = update.message;
-    const callback = update.callback_query;
-
-    if (callback) return handleCallback(callback, env);
-
-    if (!message) return new Response("OK");
-
-    const chatId = message.chat.id.toString();
-    const userId = message.from.id.toString();
-    const text = message.text || "";
-
-    // 👤 ensure user exists
-    const user = await initUser(env, userId);
-
-    // /start
-    if (text === "/start") {
-      await sendTelegramMessage(
-        env.TELEGRAM_BOT_TOKEN,
-        chatId,
-        "🚀 Gitnotify Active"
-      );
-
-      if (user.role === "admin") {
-        await sendAdminPanel(env, chatId);
-      }
-
-      return new Response("OK");
-    }
-
-    // 📉 quota check
-    if (CONFIG.ENABLE_QUOTA) {
-      const allowed = await checkQuota(env, userId);
-      if (!allowed) {
-        await sendTelegramMessage(
-          env.TELEGRAM_BOT_TOKEN,
-          chatId,
-          "⚠️ Daily limit reached"
-        );
-        return new Response("quota blocked");
-      }
-    }
-
-    await sendTelegramMessage(
-      env.TELEGRAM_BOT_TOKEN,
-      chatId,
-      `📩 Received: ${text}`
-    );
-
-    return new Response("OK");
+    // 🟢 2. Telegram Webhook Route
+    return handleTelegram(request, env);
   },
 };
 
-/**
- * QUOTA SYSTEM (clean & unified)
- */
-async function checkQuota(env: Env, userId: string): Promise<boolean> {
-  const today = new Date().toISOString().split("T")[0];
-  const key = `quota:${userId}:${today}`;
+// =========================
+// 🔥 GitHub Handler
+// =========================
+async function handleGitHub(request: Request, env: Env) {
+  const event = request.headers.get("x-github-event");
 
-  const raw = await env.GITNOTIFY_KV.get(key);
-  const count = raw ? parseInt(raw) : 0;
+  const body = await request.json().catch(() => null);
+  if (!body) return new Response("Invalid GitHub payload", { status: 400 });
 
-  const user = await getUser(env, userId);
-  const role = user?.role || "user";
+  let message = "GitHub event received";
 
-  const limits: Record<string, number> = {
-    user: 20,
-    vip: 80,
-    admin: 999999,
-  };
+  // 🟢 PUSH EVENT
+  if (event === "push") {
+    const repo = body.repository?.full_name;
+    const pusher = body.pusher?.name;
+    const commits = body.commits?.length || 0;
 
-  const limit = limits[role] || 10;
-
-  if (count >= limit) return false;
-
-  await env.GITNOTIFY_KV.put(key, String(count + 1), {
-    expirationTtl: 86400,
-  });
-
-  return true;
-}
-
-/**
- * ADMIN PANEL
- */
-async function sendAdminPanel(env: Env, chatId: string) {
-  await sendTelegramButtons(env.TELEGRAM_BOT_TOKEN, chatId, "🧠 Admin Panel", [
-    [{ text: "👥 Users", callback_data: "users" }],
-    [{ text: "⭐ Promote VIP", callback_data: "vip" }],
-    [{ text: "📊 Stats", callback_data: "stats" }],
-  ]);
-}
-
-/**
- * CALLBACK HANDLER
- */
-async function handleCallback(callback: any, env: Env) {
-  const chatId = callback.message.chat.id.toString();
-  const userId = callback.from.id.toString();
-
-  const user = await getUser(env, userId);
-  if (!user || user.role !== "admin") {
-    return new Response("not allowed");
+    message = `🚀 PUSH EVENT\nRepo: ${repo}\nBy: ${pusher}\nCommits: ${commits}`;
   }
 
-  const data = callback.data;
+  // 🟢 RELEASE EVENT
+  if (event === "release") {
+    const repo = body.repository?.full_name;
+    const tag = body.release?.tag_name;
 
-  if (data === "users") {
-    const users = await listUsers(env);
+    message = `🎉 RELEASE\nRepo: ${repo}\nTag: ${tag}`;
+  }
 
+  await sendTelegramMessage(
+    env.TELEGRAM_BOT_TOKEN,
+    "<CHAT_ID>", // بعداً dynamic می‌کنیم
+    message
+  );
+
+  return new Response("OK");
+}
+
+// =========================
+// 🔥 Telegram Handler (فعلاً ساده)
+// =========================
+async function handleTelegram(request: Request, env: Env) {
+  const secret = request.headers.get("X-Telegram-Bot-Api-Secret-Token");
+  if (secret !== env.TELEGRAM_WEBHOOK_SECRET) {
+    return new Response("Unauthorized", { status: 401 });
+  }
+
+  const update = await request.json().catch(() => null);
+  if (!update) return new Response("No update");
+
+  const message = update.message;
+  if (!message) return new Response("OK");
+
+  const chatId = message.chat.id.toString();
+  const text = message.text || "";
+
+  if (text === "/start") {
     await sendTelegramMessage(
       env.TELEGRAM_BOT_TOKEN,
       chatId,
-      "👥 Users:\n" + users.join("\n")
-    );
-  }
-
-  if (data === "stats") {
-    const users = await listUsers(env);
-
-    await sendTelegramMessage(
-      env.TELEGRAM_BOT_TOKEN,
-      chatId,
-      `📊 Total users: ${users.length}`
+      "Gitnotify Active 🚀"
     );
   }
 

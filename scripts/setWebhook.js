@@ -1,11 +1,13 @@
-// Simple auto webhook setter for Telegram Bot
+// Auto webhook after deploy (CLEAN VERSION)
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-const WORKER_URL = process.env.WORKER_URL;
 const SECRET = process.env.TELEGRAM_WEBHOOK_SECRET;
 
-if (!BOT_TOKEN || !WORKER_URL || !SECRET) {
-  console.error("Missing env vars");
+// 👇 همیشه اتومات از Worker URL استفاده کن
+const WORKER_URL = "https://gitnotify.hamidrn976.workers.dev";
+
+if (!BOT_TOKEN || !SECRET) {
+  console.error("Missing Cloudflare secrets");
   process.exit(1);
 }
 
@@ -20,7 +22,7 @@ fetch(url, {
   method: "POST",
   body,
 })
-  .then(res => res.json())
+  .then(r => r.json())
   .then(data => {
     console.log("Webhook result:", data);
   })
