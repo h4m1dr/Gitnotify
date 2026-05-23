@@ -1,15 +1,22 @@
 node_modules/
+scripts/
 .wrangler/
+
 .env
 .env.env
 .dev.vars
+
 dist/
+
 build/
+
 *.log
+
 .DS_Store
+
 Thumbs.db
+
 proxycmd.bat
 
-scripts/setWebhook.js
-scripts/package.json   (اگر فقط برای deploy هست)
-.env
+
+
