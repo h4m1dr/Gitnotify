@@ -1,27 +1,31 @@
 import { extractRepo } from "../repo/extract";
 import { addRepo } from "../repo/store";
 import { sendMessage } from "../telegram/send";
+import { getState, setState, clearState } from "./uiState";
 
-const waiting = new Map<string, boolean>();
-
-export const handleAddFlow = {
+export const addFlow = {
   start(env: any, chatId: string) {
-    waiting.set(chatId, true);
-    return sendMessage(env, chatId, "Send GitHub repo link");
+    setState(chatId, "WAIT_REPO");
+
+    return sendMessage(env, chatId,
+      "📦 Send GitHub repo (URL or owner/repo)"
+    );
   },
 
   async message(env: any, chatId: string, text: string) {
-    if (!waiting.has(chatId)) return false;
+    const state = getState(chatId);
+
+    if (state !== "WAIT_REPO") return false;
 
     const repo = extractRepo(text);
 
     if (!repo) {
-      return sendMessage(env, chatId, "❌ Invalid repo format");
+      return sendMessage(env, chatId, "❌ Invalid repo");
     }
 
     await addRepo(env, chatId, repo);
 
-    waiting.delete(chatId);
+    clearState(chatId);
 
     return sendMessage(env, chatId, `✅ Added repo: ${repo}`);
   }
