@@ -9,12 +9,13 @@ Commit: ${event.commit}`;
   if (event.type === "release") {
     return `🚀 RELEASE
 Repo: ${event.repo}
-Tag update`;
+Tag updated`;
   }
 
-  if (event.type === "issues") {
+  if (event.type === "issue") {
     return `🐛 ISSUE
-Repo: ${event.repo}`;
+Repo: ${event.repo}
+Actor: ${event.actor}`;
   }
 
   return `🔔 Update: ${event.repo}`;

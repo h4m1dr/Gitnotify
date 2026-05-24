@@ -11,12 +11,10 @@ export async function dispatchEvent(env: any, event: any) {
 
   const rule = evaluateEventRules(event);
 
-  if (!rule.allow) return;
-
   const subs = await getSubsByRepo(env, event.repo);
 
   // =========================
-  // PUSH / RELEASE → instant
+  // REALTIME EVENTS
   // =========================
   if (rule.delay === 0) {
     for (const sub of subs) {
@@ -29,9 +27,7 @@ export async function dispatchEvent(env: any, event: any) {
   }
 
   // =========================
-  // ISSUE → buffered
+  // BATCHED EVENTS
   // =========================
   addToBuffer(event.repo, event);
-
-  return;
 }
